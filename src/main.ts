@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const configService = app.get(ConfigService);
+  const appPort = configService.get<number>('APP_PORT') || 8000;
 
   // Enable global validation
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -12,8 +16,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Start listening
-  const PORT = process.env.PORT || 8000;
-  await app.listen(PORT);
-  console.log(`API Gateway is running on http://localhost:${PORT}`);
+  await app.listen(appPort);
+  console.log(`API Gateway is running on http://localhost:${appPort}`);
 }
 bootstrap();

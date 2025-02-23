@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package user;
+
+import "user-model.proto";
+
+message Empty {}
+
+service UserService {
+  rpc FindUsers(Empty) returns (FindUsersResponse);
+}
