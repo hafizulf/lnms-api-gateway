@@ -1,17 +1,15 @@
 import {
   Body,
-  ConflictException,
   Controller,
+  Delete,
   Get,
   Inject,
   InternalServerErrorException,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
   Put,
   ServiceUnavailableException,
-  UnprocessableEntityException
 } from "@nestjs/common";
 import { UserGatewayServiceInterface } from "./user.gateway.service.interface";
 import { ClientGrpc } from "@nestjs/microservices";
@@ -54,13 +52,13 @@ export class UserGatewayController {
       // gRPC methods return Observables, so we use lastValueFrom(users$) to convert them to Promises.
       return await lastValueFrom(users$);
     } catch (error) {
-      console.error('User Service gRPC Error:', error);
+      console.error('User Service gRPC Error:', error.message);
 
       if (error.code === 14) {
         throw new ServiceUnavailableException('User service is unavailable.');
       }
 
-      throw new InternalServerErrorException('Failed to retrieve users.');
+      throw new InternalServerErrorException('Unexpected error occurred.');
     }
   }
 
@@ -82,6 +80,15 @@ export class UserGatewayController {
     const response = await this.httpService.axiosRef.put(
       `${this.userServiceHttpUrl}/users/${id}`,
       userData,
+    );
+
+    return response.data;
+  }
+
+  @Delete(':id')
+  async deleteUser(@Param('id', ParseIntPipe) id: number) {
+    const response = await this.httpService.axiosRef.delete(
+      `${this.userServiceHttpUrl}/users/${id}`,
     );
 
     return response.data;

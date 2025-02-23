@@ -3,9 +3,6 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
-  BadRequestException,
-  NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
 import { Response } from 'express';
 
@@ -15,49 +12,47 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
-    // Handle Axios errors (e.g., user service responses)
     if (exception.response && exception.response.data) {
       const { status, data } = exception.response;
-      response.status(status).json(data);
+      response.status(status).json({
+        statusCode: status,
+        message: data.message || 'An error occurred',
+        error: data.error || 'Error',
+      });
       return;
     }
 
-    // Handle connection errors (e.g., when the user service is down)
     if (exception.code === 'ECONNREFUSED') {
       response.status(503).json({
         statusCode: 503,
         message: 'User service is unavailable. Please try again later.',
+        error: 'Service Unavailable',
       });
       return;
     }
 
-    // Handle NestJS-specific HttpExceptions
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const errorResponse = exception.getResponse();
 
-      if (status === 400) {
-        throw new BadRequestException(errorResponse);
-      }
-      if (status === 404) {
-        throw new NotFoundException(errorResponse);
-      }
-      if (status === 409) {
-        throw new ConflictException(errorResponse);
-      }
-
       response.status(status).json({
         statusCode: status,
-        message: errorResponse['message'] || 'An error occurred',
+        message:
+          typeof errorResponse === 'string'
+            ? errorResponse
+            : errorResponse['message'] || 'An error occurred',
+        error: exception.name || 'Error',
       });
       return;
     }
 
-    // Default Internal Server Error for unexpected exceptions
     console.error('Unhandled error:', exception);
+
     response.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
+      error: 'Internal Server Error',
     });
   }
 }
+
