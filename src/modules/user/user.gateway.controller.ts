@@ -1,4 +1,18 @@
-import { Body, Controller, Get, Inject, InternalServerErrorException, Post, UnprocessableEntityException } from "@nestjs/common";
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Inject,
+  InternalServerErrorException,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  ServiceUnavailableException,
+  UnprocessableEntityException
+} from "@nestjs/common";
 import { UserGatewayServiceInterface } from "./user.gateway.service.interface";
 import { ClientGrpc } from "@nestjs/microservices";
 import { lastValueFrom } from "rxjs";
@@ -40,27 +54,36 @@ export class UserGatewayController {
       // gRPC methods return Observables, so we use lastValueFrom(users$) to convert them to Promises.
       return await lastValueFrom(users$);
     } catch (error) {
-      console.error('User Service Error:', error.message);
-      throw new InternalServerErrorException('User service is unavailable.');
+      console.error('User Service gRPC Error:', error);
+
+      if (error.code === 14) {
+        throw new ServiceUnavailableException('User service is unavailable.');
+      }
+
+      throw new InternalServerErrorException('Failed to retrieve users.');
     }
   }
 
   @Post()
   async createUser(@Body() userData: any) {
-    try {
-      const response = await this.httpService.axiosRef.post(
-        `${this.userServiceHttpUrl}/users`,
-        userData,
-      );
+    const response = await this.httpService.axiosRef.post(
+      `${this.userServiceHttpUrl}/users`,
+      userData,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (error.response && error.response.status === 422) {
-        throw new UnprocessableEntityException(error.response.data);
-      }
+    return response.data;
+  }
 
-      console.error('Error creating user:', error.message);
-      throw new InternalServerErrorException('Failed to create user.');
-    }
+  @Put(':id')
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() userData: any,
+  ) {
+    const response = await this.httpService.axiosRef.put(
+      `${this.userServiceHttpUrl}/users/${id}`,
+      userData,
+    );
+
+    return response.data;
   }
 }
