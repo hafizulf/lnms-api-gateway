@@ -14,10 +14,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (exception.response && exception.response.data) {
       const { status, data } = exception.response;
+
+      // Ensure 'errors' array is forwarded properly
       response.status(status).json({
         statusCode: status,
         message: data.message || 'An error occurred',
-        error: data.error || 'Error',
+        errors: data.errors || [], // Preserve validation errors
       });
       return;
     }
@@ -42,6 +44,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? errorResponse
             : errorResponse['message'] || 'An error occurred',
         error: exception.name || 'Error',
+        errors: errorResponse['errors'] || [], // Ensure errors array is forwarded
       });
       return;
     }
@@ -55,4 +58,3 @@ export class HttpExceptionFilter implements ExceptionFilter {
     });
   }
 }
-

@@ -3,29 +3,23 @@ import {
   Controller,
   Delete,
   Get,
-  Inject,
-  InternalServerErrorException,
   Param,
   ParseIntPipe,
   Post,
   Put,
-  ServiceUnavailableException,
+  UseFilters,
 } from "@nestjs/common";
-import { UserGatewayServiceInterface } from "./user.gateway.service.interface";
-import { ClientGrpc } from "@nestjs/microservices";
-import { lastValueFrom } from "rxjs";
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
+import { ParseIntExceptionFilter } from "../common/filters/parse-int-exception.filter";
 
 @Controller('users')
 export class UserGatewayController {
-  private userService: UserGatewayServiceInterface;
   private userServiceHttpUrl: string;
 
   // Executed immediately when the class is instantiated.
   // Useful for assigning values that do not depend on external dependencies.
   constructor(
-    @Inject('USER_SERVICE') private client: ClientGrpc,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
@@ -37,29 +31,13 @@ export class UserGatewayController {
       : `http://${rawUrl}`;
   }
 
-  // onModuleInit() is a built-in lifecycle hook - Runs after NestJS initializes the module.
-  // Used when a property depends on a service that requires initialization
-  onModuleInit() {
-    this.userService =
-      this.client.getService<UserGatewayServiceInterface>('UserService');
-  }
-
   @Get()
   async findUsers() {
-    try {
-      const users$ = this.userService.findUsers({});
+    const response = await this.httpService.axiosRef.get(
+      `${this.userServiceHttpUrl}/users`
+    );
 
-      // gRPC methods return Observables, so we use lastValueFrom(users$) to convert them to Promises.
-      return await lastValueFrom(users$);
-    } catch (error) {
-      console.error('User Service gRPC Error:', error.message);
-
-      if (error.code === 14) {
-        throw new ServiceUnavailableException('User service is unavailable.');
-      }
-
-      throw new InternalServerErrorException('Unexpected error occurred.');
-    }
+    return response.data;
   }
 
   @Post()
@@ -73,6 +51,7 @@ export class UserGatewayController {
   }
 
   @Put(':id')
+  @UseFilters(new ParseIntExceptionFilter())
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() userData: any,
@@ -86,6 +65,7 @@ export class UserGatewayController {
   }
 
   @Delete(':id')
+  @UseFilters(new ParseIntExceptionFilter())
   async deleteUser(@Param('id', ParseIntPipe) id: number) {
     const response = await this.httpService.axiosRef.delete(
       `${this.userServiceHttpUrl}/users/${id}`,
