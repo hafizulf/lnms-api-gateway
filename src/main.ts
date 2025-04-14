@@ -17,7 +17,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Enable global exception filter
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(app.get(HttpExceptionFilter));
 
   // Start listening
   await app.listen(appPort);

@@ -4,10 +4,14 @@ import {
   ArgumentsHost,
   HttpException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import { getServiceNameMap } from 'src/modules/common/utils/service-name-map';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  constructor(private readonly configService: ConfigService) {}
+
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -25,9 +29,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     if (exception.code === 'ECONNREFUSED') {
+      const baseURL = exception?.config?.baseURL || '';
+      const requestUrl = exception?.config?.url || '';
+      const fullUrl = baseURL ? `${baseURL}${requestUrl}` : requestUrl;
+
+      const serviceNameMap = getServiceNameMap(this.configService);
+      const matchKey = Object.keys(serviceNameMap).find(
+        (key) => fullUrl.startsWith(key) || baseURL.startsWith(key),
+      );
+      const serviceName = serviceNameMap[matchKey || ''] || 'Upstream Service';
+
+      const isProd =
+        this.configService.get<string>('NODE_ENV') === 'production';
+
       response.status(503).json({
         statusCode: 503,
-        message: 'User service is unavailable. Please try again later.',
+        message: isProd
+          ? `${serviceName} is temporarily unavailable. Please try again later.`
+          : `${serviceName} (${fullUrl}) is unavailable. Please try again later.`,
         error: 'Service Unavailable',
       });
       return;

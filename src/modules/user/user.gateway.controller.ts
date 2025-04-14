@@ -12,6 +12,7 @@ import {
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
 import { ParseIntExceptionFilter } from "../common/filters/parse-int-exception.filter";
+import { SERVICE_CONST } from "../common/const/service-const";
 
 @Controller('users')
 export class UserGatewayController {
@@ -24,7 +25,7 @@ export class UserGatewayController {
     private readonly configService: ConfigService,
   ) {
     const rawUrl = this.configService.get<string>(
-      'USER_SERVICE_HTTP_URL',
+      SERVICE_CONST.USER_SERVICE_HTTP_URL,
     ) as string;
     this.userServiceHttpUrl = rawUrl.startsWith('http')
       ? rawUrl
