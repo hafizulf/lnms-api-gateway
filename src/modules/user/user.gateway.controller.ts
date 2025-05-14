@@ -10,9 +10,9 @@ import {
   UseFilters,
 } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
-import { ConfigService } from "@nestjs/config";
 import { ParseIntExceptionFilter } from "../common/filters/parse-int-exception.filter";
 import { SERVICE_CONST } from "../common/const/service-const";
+import { ServiceUrlUtils } from "../common/utils/service-url.utils";
 
 @Controller('users')
 export class UserGatewayController {
@@ -22,14 +22,9 @@ export class UserGatewayController {
   // Useful for assigning values that do not depend on external dependencies.
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
+    private readonly serviceUrlUtils: ServiceUrlUtils,
   ) {
-    const rawUrl = this.configService.get<string>(
-      SERVICE_CONST.USER_SERVICE_HTTP_URL,
-    ) as string;
-    this.userServiceHttpUrl = rawUrl.startsWith('http')
-      ? rawUrl
-      : `http://${rawUrl}`;
+    this.userServiceHttpUrl = this.serviceUrlUtils.getServiceUrl(SERVICE_CONST.USER_SERVICE_HTTP_URL);
   }
 
   @Get()
